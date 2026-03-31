@@ -8,6 +8,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/wait.h>
 #include <termios.h>
 #include <time.h>
 #include <unistd.h>
@@ -41,8 +42,7 @@ HELP_OPTIONS \
 "\t" ARG_URL "\n" \
 ""
 
-#define XDG_OPEN "/usr/bin/xdg-open \"%s\""
-#define MAX_OPEN_CMD_LENGTH MAX_URL_LENGTH + 22 // The max URL length and the XDG_OPEN command length
+#define XDG_OPEN_BIN "/usr/bin/xdg-open"
 
 static void print_help(const char *name)
 {
@@ -165,19 +165,27 @@ static bool get_token(struct api_credentials *creds)
         return false;
     }
 
-    char open_cmd[MAX_OPEN_CMD_LENGTH] = {0};
-    snprintf(open_cmd, MAX_OPEN_CMD_LENGTH, XDG_OPEN, url);
-    const int status = system(open_cmd);
-
-    if (status == EXIT_SUCCESS) {
-        _debug("xdg::opened[ok]: %s", url);
+    bool opened = false;
+    const pid_t pid = fork();
+    if (pid == 0) {
+        char *const exec_argv[] = { XDG_OPEN_BIN, url, NULL };
+        execv(XDG_OPEN_BIN, exec_argv);
+        _exit(EXIT_FAILURE);
+    } else if (pid > 0) {
+        int wstatus = 0;
+        if (waitpid(pid, &wstatus, 0) == pid && WIFEXITED(wstatus) && WEXITSTATUS(wstatus) == EXIT_SUCCESS) {
+            _debug("xdg::opened[ok]: %s", url);
+            opened = true;
+        } else {
+            _debug("xdg::opened[nok]: %s", url);
+        }
     } else {
-        _debug("xdg::opened[nok]: %s", url);
+        _error("signon::fork_error: unable to open authentication url");
     }
     curl_url_cleanup(auth_url);
     curl_free(url);
 
-    return status == EXIT_SUCCESS;
+    return opened;
 }
 
 static int getch(void) {
