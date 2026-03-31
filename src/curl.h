@@ -307,7 +307,7 @@ static size_t http_response_write_body(void *buffer, size_t size, size_t nmemb, 
 
     const size_t new_size = size * nmemb;
 
-    strncat(res->body, buffer, new_size);
+    safe_strncat(res->body, (const char*)buffer, MAX_BODY_SIZE + 1);
     res->body_length += new_size;
 
     assert (res->body_length < MAX_BODY_SIZE);
