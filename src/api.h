@@ -130,7 +130,7 @@ static size_t endpoint_get_scheme(char *result, const char *custom_url)
     }
 
     const size_t scheme_len = strlen(scheme);
-    memcpy(result, scheme, min(scheme_len, MAX_SCHEME_LENGTH));
+    safe_strncpy(result, scheme, MAX_SCHEME_LENGTH + 1);
 
     return scheme_len;
 }
@@ -215,7 +215,7 @@ static size_t endpoint_get_host(char *result, const enum api_type type, const en
         }
     }
 
-    memcpy(result, host, min(host_len, MAX_HOST_LENGTH));
+    safe_strncpy(result, host, min(host_len, (size_t)MAX_HOST_LENGTH) + 1);
     return host_len;
 }
 
@@ -236,7 +236,7 @@ static size_t endpoint_get_base_path(char *result, const char *custom_url)
         return 0;
     }
     const size_t path_len = strlen(base_path);
-    memcpy(result, base_path, min(path_len, FILE_PATH_MAX) + 1);
+    safe_strncpy(result, base_path, FILE_PATH_MAX + 1);
     return path_len;
 }
 
@@ -300,11 +300,10 @@ static size_t endpoint_get_path(char *result, const enum api_type type, const en
     if (NULL == path) {
         return 0;
     }
-    char full_path[FILE_PATH_MAX + 1];
+    char full_path[FILE_PATH_MAX + 1] = {0};
     path_len += endpoint_get_base_path(full_path, custom_url);
-    strcat(full_path, path);
-
-    memcpy(result, full_path, min(path_len, FILE_PATH_MAX) + 1);
+    safe_strncat(full_path, path, FILE_PATH_MAX + 1);
+    safe_strncpy(result, full_path, FILE_PATH_MAX + 1);
     return path_len;
 }
 
@@ -599,8 +598,8 @@ static struct http_header *http_header_new(void)
 struct http_header *http_content_type_header_new (void)
 {
     struct http_header *header = http_header_new();
-    strncpy(header->name, HTTP_HEADER_CONTENT_TYPE, (MAX_HEADER_NAME_LENGTH - 1));
-    strncpy(header->value, CONTENT_TYPE_JSON, (MAX_HEADER_VALUE_LENGTH - 1));
+    safe_strncpy(header->name, HTTP_HEADER_CONTENT_TYPE, MAX_HEADER_NAME_LENGTH);
+    safe_strncpy(header->value, CONTENT_TYPE_JSON, MAX_HEADER_VALUE_LENGTH);
 
     return header;
 }
@@ -608,7 +607,7 @@ struct http_header *http_content_type_header_new (void)
 struct http_header *http_authorization_header_new (const char *token)
 {
     struct http_header *header = http_header_new();
-    strncpy(header->name, API_HEADER_AUTHORIZATION_NAME, (MAX_HEADER_NAME_LENGTH - 1));
+    safe_strncpy(header->name, API_HEADER_AUTHORIZATION_NAME, MAX_HEADER_NAME_LENGTH);
     snprintf(header->value, MAX_HEADER_VALUE_LENGTH, API_HEADER_AUTHORIZATION_VALUE_TOKENIZED, token);
 
     return header;
@@ -704,9 +703,8 @@ static void http_header_load(const char *data, const size_t length, struct http_
     if (name_length < 2) { return; }
 
     const size_t value_length = length - name_length - 1;
-    strncpy(h->name, data, name_length);
-
-    strncpy(h->value, scol_pos + 2, value_length - 2); // skip : and space
+    safe_strncpy(h->name, data, min(name_length + 1, (size_t)MAX_HEADER_NAME_LENGTH));
+    safe_strncpy(h->value, scol_pos + 2, min(value_length - 1, (size_t)MAX_HEADER_VALUE_LENGTH));
 }
 
 static bool json_document_is_error(const char *buffer, const size_t length, enum api_type type)
