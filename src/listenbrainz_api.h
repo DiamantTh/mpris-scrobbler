@@ -145,6 +145,8 @@ static void listenbrainz_api_build_request_now_playing(struct http_request *requ
     const char *token = auth->token;
 
     char body[MAX_BODY_SIZE+1] = {0};
+    struct str_builder body_sb;
+    sb_init(&body_sb, body, MAX_BODY_SIZE);
 
     json_object *root = json_object_new_object();
     json_object_object_add(root, API_LISTEN_TYPE_NODE_NAME, json_object_new_string(API_LISTEN_TYPE_NOW_PLAYING));
@@ -158,21 +160,19 @@ static void listenbrainz_api_build_request_now_playing(struct http_request *requ
     }
 
     char full_artist[MAX_PROPERTY_COUNT * (MAX_PROPERTY_LENGTH  + 1)] = {0};
-    size_t full_artist_len = 0;
+    struct str_builder fa;
+    sb_init(&fa, full_artist, sizeof(full_artist) - 1);
     for (size_t i = 0; i < array_count(track->artist); i++) {
         const char *artist = track->artist[i];
         const size_t artist_len = strlen(artist);
         if (NULL == artist || artist_len == 0) { continue; }
 
-        if (full_artist_len > 0) {
-            const size_t l_val_sep = strlen(VALUE_SEPARATOR);
-            strncat(full_artist, VALUE_SEPARATOR, l_val_sep + 1);
-            full_artist_len += l_val_sep;
+        if (fa.len > 0) {
+            sb_append(&fa, VALUE_SEPARATOR);
         }
-        strncat(full_artist, artist, min(MAX_PROPERTY_LENGTH, artist_len));
-        full_artist_len += artist_len;
+        sb_append(&fa, artist);
     }
-    if (full_artist_len > 0) {
+    if (fa.len > 0) {
         json_object_object_add(metadata, API_ARTIST_NAME_NODE_NAME, json_object_new_string(full_artist));
     }
     json_object_object_add(metadata, API_TRACK_NAME_NODE_NAME, json_object_new_string(track->title));
@@ -185,14 +185,14 @@ static void listenbrainz_api_build_request_now_playing(struct http_request *requ
     json_object_object_add(root, API_PAYLOAD_NODE_NAME, payload);
 
     const char *json_str = json_object_to_json_string(root);
-    strncpy(body, json_str, MAX_BODY_SIZE);
+    sb_append(&body_sb, json_str);
 
     arrput(request->headers, http_authorization_header_new(token));
     arrput(request->headers, http_content_type_header_new());
 
     request->request_type = http_post;
     memcpy(request->body, body, MAX_BODY_SIZE);
-    request->body_length = strlen(body);
+    request->body_length = body_sb.len;
     request->end_point = api_endpoint_new(auth);
     api_get_url(request->url, request->end_point);
 
@@ -208,6 +208,8 @@ static void listenbrainz_api_build_request_scrobble(struct http_request *request
     const char *token = auth->token;
 
     char body[MAX_BODY_SIZE+1] = {0};
+    struct str_builder body_sb;
+    sb_init(&body_sb, body, MAX_BODY_SIZE);
 
     json_object *root = json_object_new_object();
     if (track_count > 1) {
@@ -230,21 +232,19 @@ static void listenbrainz_api_build_request_scrobble(struct http_request *request
             json_object_object_add(metadata, API_ALBUM_NAME_NODE_NAME, json_object_new_string(track->album));
         }
         char full_artist[MAX_PROPERTY_COUNT * (MAX_PROPERTY_LENGTH + 1)] = {0};
-        size_t full_artist_len = 0;
+        struct str_builder fa;
+        sb_init(&fa, full_artist, sizeof(full_artist) - 1);
         for (size_t ai = 0; ai < array_count(track->artist); ai++) {
             const char *artist = track->artist[ai];
             const size_t artist_len = strlen(artist);
             if (NULL == artist || artist_len == 0) { continue; }
 
-            if (full_artist_len > 0) {
-                const size_t l_val_sep = strlen(VALUE_SEPARATOR);
-                strncat(full_artist, VALUE_SEPARATOR, l_val_sep + 1);
-                full_artist_len += l_val_sep;
+            if (fa.len > 0) {
+                sb_append(&fa, VALUE_SEPARATOR);
             }
-            strncat(full_artist, artist, min(MAX_PROPERTY_LENGTH, artist_len));
-            full_artist_len += artist_len;
+            sb_append(&fa, artist);
         }
-        if (full_artist_len > 0) {
+        if (fa.len > 0) {
             json_object_object_add(metadata, API_ARTIST_NAME_NODE_NAME, json_object_new_string(full_artist));
         }
         if (strlen(track->title) > 0) {
@@ -262,14 +262,14 @@ static void listenbrainz_api_build_request_scrobble(struct http_request *request
     json_object_object_add(root, API_PAYLOAD_NODE_NAME, payload);
 
     const char *json_str = json_object_to_json_string(root);
-    strncpy(body, json_str, MAX_BODY_SIZE);
+    sb_append(&body_sb, json_str);
 
     arrput(request->headers, (http_authorization_header_new(token)));
     arrput(request->headers, (http_content_type_header_new()));
 
     request->request_type = http_post;
     memcpy(request->body, body, MAX_BODY_SIZE);
-    request->body_length = strlen(body);
+    request->body_length = body_sb.len;
     request->end_point = api_endpoint_new(auth);
     api_get_url(request->url, request->end_point);
 

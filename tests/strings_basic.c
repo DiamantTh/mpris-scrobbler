@@ -443,6 +443,82 @@ describe(basic) {
             asserteq_str(dst, "hi");
         }
     }
+
+    subdesc(str_builder) {
+        it("sb_init sets up empty builder") {
+            char buf[16] = {'x', 'x', 'x', '\0'};
+            struct str_builder sb;
+            sb_init(&sb, buf, sizeof(buf) - 1);
+            asserteq_ptr(sb.buf, buf);
+            asserteq_int((int)sb.len, 0);
+            asserteq_int((int)sb.cap, 15);
+            asserteq_int(buf[0], '\0');
+        }
+        it("sb_append adds a string") {
+            char buf[16] = {0};
+            struct str_builder sb;
+            sb_init(&sb, buf, sizeof(buf) - 1);
+            sb_append(&sb, "hello");
+            asserteq_str(sb_finish(&sb), "hello");
+            asserteq_int((int)sb.len, 5);
+        }
+        it("sb_append builds incrementally") {
+            char buf[16] = {0};
+            struct str_builder sb;
+            sb_init(&sb, buf, sizeof(buf) - 1);
+            sb_append(&sb, "foo");
+            sb_append(&sb, "bar");
+            asserteq_str(sb_finish(&sb), "foobar");
+            asserteq_int((int)sb.len, 6);
+        }
+        it("sb_append truncates at capacity") {
+            char buf[8] = {0};
+            struct str_builder sb;
+            sb_init(&sb, buf, sizeof(buf) - 1);
+            sb_append(&sb, "foo");
+            sb_append(&sb, "barbaz");
+            asserteq_str(sb_finish(&sb), "foobarb");
+            asserteq_int((int)sb.len, 7);
+            asserteq_int(buf[7], '\0');
+        }
+        it("sb_append handles NULL src gracefully") {
+            char buf[8] = {0};
+            struct str_builder sb;
+            sb_init(&sb, buf, sizeof(buf) - 1);
+            sb_append(&sb, "hi");
+            sb_append(&sb, NULL);
+            asserteq_str(sb_finish(&sb), "hi");
+            asserteq_int((int)sb.len, 2);
+        }
+        it("sb_append_fmt formats and appends") {
+            char buf[32] = {0};
+            struct str_builder sb;
+            sb_init(&sb, buf, sizeof(buf) - 1);
+            sb_append_fmt(&sb, "val=%d&", 42);
+            asserteq_str(sb_finish(&sb), "val=42&");
+            asserteq_int((int)sb.len, 7);
+        }
+        it("sb_append_fmt builds incrementally") {
+            char buf[32] = {0};
+            struct str_builder sb;
+            sb_init(&sb, buf, sizeof(buf) - 1);
+            sb_append(&sb, "a=");
+            sb_append_fmt(&sb, "%d", 1);
+            sb_append(&sb, "&b=");
+            sb_append_fmt(&sb, "%d", 2);
+            asserteq_str(sb_finish(&sb), "a=1&b=2");
+            asserteq_int((int)sb.len, 7);
+        }
+        it("sb_finish returns NUL-terminated buf pointer") {
+            char buf[16] = {0};
+            struct str_builder sb;
+            sb_init(&sb, buf, sizeof(buf) - 1);
+            sb_append(&sb, "test");
+            const char *result = sb_finish(&sb);
+            asserteq_ptr(result, buf);
+            asserteq_str(result, "test");
+        }
+    }
 }
 
 snow_main();
