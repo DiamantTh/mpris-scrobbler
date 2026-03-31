@@ -13,7 +13,9 @@
 #endif
 
 #include <inttypes.h>
+#include <stdarg.h>
 #include <stddef.h>
+#include <stdio.h>
 
 #ifndef grrrs_std_alloc
 #include <stdlib.h>
@@ -376,5 +378,61 @@ _to_trim_free:
 }
 
 #define grrrs_trim(A, B) _grrrs_trim_right(_grrrs_trim_left((A), (B)), (B))
+
+/* ---------- Capacity-aware string builder ---------- */
+
+struct str_builder {
+    char   *buf;
+    size_t  len;
+    size_t  cap;
+};
+
+/* Initialise a builder that writes into buf[0..cap] (buf must be cap+1 bytes). */
+static void sb_init(struct str_builder *sb, char *buf, size_t cap)
+{
+    if (_VOID(sb) || _VOID(buf) || cap == 0) { return; }
+    sb->buf = buf;
+    sb->len = 0;
+    sb->cap = cap;
+    buf[0] = '\0';
+}
+
+/* Append src to the builder, silently stopping at capacity. */
+static void sb_append(struct str_builder *sb, const char *src)
+{
+    if (_VOID(sb) || _VOID(src)) { return; }
+    if (sb->len >= sb->cap) { return; }
+    const size_t remaining = sb->cap - sb->len;
+    size_t i;
+    for (i = 0; i < remaining && src[i] != '\0'; i++) {
+        sb->buf[sb->len + i] = src[i];
+    }
+    sb->buf[sb->len + i] = '\0';
+    sb->len += i;
+}
+
+/* Append a printf-formatted string, silently stopping at capacity. */
+static void sb_append_fmt(struct str_builder *sb, const char *fmt, ...)
+{
+    if (_VOID(sb) || _VOID(fmt)) { return; }
+    if (sb->len >= sb->cap) { return; }
+    va_list args;
+    va_start(args, fmt);
+    const int written = vsnprintf(sb->buf + sb->len, sb->cap - sb->len + 1, fmt, args);
+    va_end(args);
+    if (written > 0) {
+        const size_t added = ((size_t)written <= sb->cap - sb->len)
+                             ? (size_t)written : sb->cap - sb->len;
+        sb->len += added;
+    }
+}
+
+/* Ensure the buffer is NUL-terminated and return it. */
+static char *sb_finish(struct str_builder *sb)
+{
+    if (_VOID(sb)) { return NULL; }
+    sb->buf[sb->len] = '\0';
+    return sb->buf;
+}
 
 #endif // MPRIS_SCROBBLER_SSTRINGS_H

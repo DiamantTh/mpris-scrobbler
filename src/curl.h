@@ -307,8 +307,12 @@ static size_t http_response_write_body(void *buffer, size_t size, size_t nmemb, 
 
     const size_t new_size = size * nmemb;
 
-    safe_strncat(res->body, (const char*)buffer, MAX_BODY_SIZE + 1);
-    res->body_length += new_size;
+    struct str_builder sb;
+    sb.buf = res->body;
+    sb.len = res->body_length;
+    sb.cap = MAX_BODY_SIZE;
+    sb_append(&sb, (const char*)buffer);
+    res->body_length = sb.len;
 
     assert (res->body_length < MAX_BODY_SIZE);
     memset(res->body + res->body_length, 0x0, MAX_BODY_SIZE - res->body_length);
