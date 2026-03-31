@@ -276,7 +276,9 @@ static bool audioscrobbler_valid_api_credentials(const struct api_credentials *a
 static bool audioscrobbler_valid_credentials(const struct api_credentials *auth)
 {
     if (NULL == auth) { return false; }
-    return audioscrobbler_valid_api_credentials(auth) && auth->enabled;
+    if (!audioscrobbler_valid_api_credentials(auth)) { return false; }
+    if (!auth->enabled) { return false; }
+    return strlen(auth->session_key) > 0;
 }
 
 #define MD5_DIGEST_LENGTH 16

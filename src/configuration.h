@@ -5,6 +5,7 @@
 #ifndef MPRIS_SCROBBLER_CONFIGURATION_H
 #define MPRIS_SCROBBLER_CONFIGURATION_H
 
+#include <fcntl.h>
 #include <string.h>
 #include <sys/stat.h>
 #include "ini.h"
@@ -320,22 +321,27 @@ static bool load_credentials_from_ini_group (struct ini_group *group, struct api
             }
         }
         if (strncmp(key->data, CONFIG_KEY_USER_NAME, strlen(CONFIG_KEY_USER_NAME)) == 0) {
-            strncpy((credentials)->user_name, value->data, value->len + 1);
+            strncpy((credentials)->user_name, value->data, USER_NAME_MAX);
+            (credentials)->user_name[USER_NAME_MAX] = '\0';
         }
         if (strncmp(key->data, CONFIG_KEY_PASSWORD, strlen(CONFIG_KEY_PASSWORD)) == 0) {
-            strncpy((credentials)->password, value->data, value->len + 1);
+            strncpy((credentials)->password, value->data, MAX_SECRET_LENGTH);
+            (credentials)->password[MAX_SECRET_LENGTH] = '\0';
         }
         if (strncmp(key->data, CONFIG_KEY_TOKEN, strlen(CONFIG_KEY_TOKEN)) == 0) {
-            strncpy((char*)(credentials)->token, value->data, value->len + 1);
+            strncpy((char*)(credentials)->token, value->data, MAX_SECRET_LENGTH);
+            ((char*)(credentials)->token)[MAX_SECRET_LENGTH] = '\0';
         }
         if (strncmp(key->data, CONFIG_KEY_SESSION, strlen(CONFIG_KEY_SESSION)) == 0) {
-            strncpy((char*)(credentials)->session_key, value->data, value->len + 1);
+            strncpy((char*)(credentials)->session_key, value->data, MAX_SECRET_LENGTH);
+            ((char*)(credentials)->session_key)[MAX_SECRET_LENGTH] = '\0';
         }
         switch ((credentials)->end_point) {
         case api_librefm:
         case api_listenbrainz:
             if (strncmp(key->data, CONFIG_KEY_URL, strlen(CONFIG_KEY_URL)) == 0) {
-                strncpy((char*)(credentials)->url, value->data, value->len + 1);
+                strncpy((char*)(credentials)->url, value->data, MAX_URL_LENGTH);
+                ((char*)(credentials)->url)[MAX_URL_LENGTH] = '\0';
             }
             break;
         case api_lastfm:
@@ -406,17 +412,20 @@ static bool load_config_from_file(struct configuration *config, const char* path
         const struct ini_group *group = ini.groups[i];
         if (NULL == group->name) { continue; }
         if (strncmp(group->name->data, DEFAULT_GROUP_NAME, group->name->len) != 0) {
-            break;
+            continue;
         }
         const size_t value_count = arrlen(group->values);
         for (size_t j = 0; j < value_count; j++) {
             const struct ini_value *val = group->values[j];
             if (strncmp(val->key->data, CONFIG_KEY_IGNORE, val->key->len) != 0) {
-                break;
+                continue;
             }
+            if (config->ignore_players_count >= MAX_PLAYERS) { break; }
             const short cnt = config->ignore_players_count;
             _trace("config::ignore_player[%d]: %s", cnt, val->value->data);
-            memcpy((char*)config->ignore_players[cnt], val->value->data, val->value->len);
+            const size_t copy_len = val->value->len < MAX_PROPERTY_LENGTH ? val->value->len : MAX_PROPERTY_LENGTH;
+            memcpy((char*)config->ignore_players[cnt], val->value->data, copy_len);
+            ((char*)config->ignore_players[cnt])[copy_len] = '\0';
             config->ignore_players_count++;
         }
     }
@@ -533,10 +542,10 @@ static void print_application_config(const struct configuration *config)
             printf("\tpassword = %s\n", cur->password);
         }
         if (strlen(cur->token) > 0) {
-            printf("\ttoken = %s\n", cur->token);
+            printf("\ttoken = [REDACTED]\n");
         }
         if (strlen(cur->session_key)) {
-            printf("\tsession_key = %s\n", cur->session_key);
+            printf("\tsession_key = [REDACTED]\n");
         }
     }
 }
@@ -634,9 +643,15 @@ static int write_credentials_file(struct configuration *config) {
 #endif
 
     _debug("saving::credentials[%u]: %s", count, config->credentials_path);
-    FILE *file = fopen(config->credentials_path, "w+");
+    const int fd = open(config->credentials_path, O_WRONLY | O_CREAT | O_TRUNC, (mode_t)0600);
+    if (fd < 0) {
+        _warn("saving::credentials:failed: %s", config->credentials_path);
+        goto _return;
+    }
+    FILE *file = fdopen(fd, "w");
     if (NULL == file) {
         _warn("saving::credentials:failed: %s", config->credentials_path);
+        close(fd);
         goto _return;
     }
     status = write_ini_file(to_write, file);
