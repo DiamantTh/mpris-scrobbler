@@ -307,6 +307,9 @@ static size_t http_response_write_body(void *buffer, size_t size, size_t nmemb, 
 
     const size_t new_size = size * nmemb;
 
+    /* Initialize the builder from the existing response state.
+     * res->body is zero-initialized at connection setup and res->body_length
+     * is maintained across calls, so no sb_init is needed here. */
     struct str_builder sb;
     sb.buf = res->body;
     sb.len = res->body_length;

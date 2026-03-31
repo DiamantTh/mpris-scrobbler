@@ -390,14 +390,18 @@ struct str_builder {
 /* Initialise a builder that writes into buf[0..cap] (buf must be cap+1 bytes). */
 static void sb_init(struct str_builder *sb, char *buf, size_t cap)
 {
-    if (_VOID(sb) || _VOID(buf) || cap == 0) { return; }
-    sb->buf = buf;
+    if (_VOID(sb)) { return; }
+    sb->buf = NULL;
     sb->len = 0;
+    sb->cap = 0;
+    if (_VOID(buf) || cap == 0) { return; }
+    sb->buf = buf;
     sb->cap = cap;
     buf[0] = '\0';
 }
 
-/* Append src to the builder, silently stopping at capacity. */
+/* Append src to the builder, silently stopping at capacity.
+ * sb_init must have been called before the first sb_append. */
 static void sb_append(struct str_builder *sb, const char *src)
 {
     if (_VOID(sb) || _VOID(src)) { return; }
