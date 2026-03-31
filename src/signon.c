@@ -162,6 +162,14 @@ static bool get_token(struct api_credentials *creds)
     curl_url_get(auth_url, CURLUPART_URL, &url, MPRIS_CURLU_FLAGS);
     if (strlen(url) == 0) {
         _error("signon::get_token_error: unable to open authentication url");
+        curl_url_cleanup(auth_url);
+        curl_free(url);
+        return false;
+    }
+    if (strncmp(url, "http://", 7) != 0 && strncmp(url, "https://", 8) != 0) {
+        _error("signon::get_token_error: unexpected url scheme");
+        curl_url_cleanup(auth_url);
+        curl_free(url);
         return false;
     }
 
