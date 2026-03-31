@@ -200,12 +200,13 @@ static bool set_token(struct api_credentials *creds)
     size_t pos = 0;
 
     fprintf(stdout, "Token for %s: ", get_api_type_label(creds->end_point));
-    while (chr != '\n') {
+    while (chr != '\n' && pos < MAX_SECRET_LENGTH) {
         chr = getch();
+        if (chr == '\n') { break; }
         ((char*)creds->token)[pos] = (char)chr;
         pos++;
     }
-    ((char*)creds->token)[pos-1] = 0x0;
+    ((char*)creds->token)[pos] = 0x0;
     fprintf(stdout, "\n");
 
     if (strlen(creds->token) > 0) {
