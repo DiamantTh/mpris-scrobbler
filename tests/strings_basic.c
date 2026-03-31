@@ -382,6 +382,67 @@ describe(basic) {
             asserteq_buf("", t, 1);
         }
     }
+
+    subdesc(safe_strncpy) {
+        it("copies a string into a larger buffer") {
+            char dst[16] = {0};
+            safe_strncpy(dst, "hello", sizeof(dst));
+            asserteq_str(dst, "hello");
+        }
+        it("always NUL-terminates when truncating") {
+            char dst[4] = {0};
+            safe_strncpy(dst, "hello", sizeof(dst));
+            asserteq_str(dst, "hel");
+            asserteq_int(dst[3], '\0');
+        }
+        it("copies empty string") {
+            char dst[8] = {'x', 'x', 'x', 0};
+            safe_strncpy(dst, "", sizeof(dst));
+            asserteq_str(dst, "");
+        }
+        it("handles NULL src by writing empty string") {
+            char dst[8] = {'x', 0};
+            safe_strncpy(dst, NULL, sizeof(dst));
+            asserteq_int(dst[0], '\0');
+        }
+        it("does nothing when dst_size is zero") {
+            char dst[4] = {'a', 'b', 'c', '\0'};
+            safe_strncpy(dst, "xyz", 0);
+            asserteq_str(dst, "abc");
+        }
+    }
+
+    subdesc(safe_strncat) {
+        it("appends to an existing string") {
+            char dst[16] = {0};
+            safe_strncpy(dst, "foo", sizeof(dst));
+            safe_strncat(dst, "bar", sizeof(dst));
+            asserteq_str(dst, "foobar");
+        }
+        it("always NUL-terminates when truncating") {
+            char dst[6] = {0};
+            safe_strncpy(dst, "foo", sizeof(dst));
+            safe_strncat(dst, "barbaz", sizeof(dst));
+            asserteq_str(dst, "fooba");
+            asserteq_int(dst[5], '\0');
+        }
+        it("appends to empty destination") {
+            char dst[8] = {0};
+            safe_strncat(dst, "hello", sizeof(dst));
+            asserteq_str(dst, "hello");
+        }
+        it("does nothing when destination is already full") {
+            char dst[4] = {'a', 'b', 'c', '\0'};
+            safe_strncat(dst, "x", sizeof(dst));
+            asserteq_str(dst, "abc");
+        }
+        it("does nothing with NULL src") {
+            char dst[8] = {0};
+            safe_strncpy(dst, "hi", sizeof(dst));
+            safe_strncat(dst, NULL, sizeof(dst));
+            asserteq_str(dst, "hi");
+        }
+    }
 }
 
 snow_main();

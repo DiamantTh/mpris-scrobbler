@@ -121,6 +121,33 @@ static void __cstrncpy(char *dest, const char *src, uint32_t len)
     dest[len] = '\0';
 }
 
+/* Copy at most dst_size-1 bytes from src into dst, always NUL-terminates. */
+static void safe_strncpy(char *dst, const char *src, size_t dst_size)
+{
+    if (_VOID(dst) || dst_size == 0) { return; }
+    if (_VOID(src)) { dst[0] = '\0'; return; }
+    size_t i;
+    for (i = 0; i < dst_size - 1 && src[i] != '\0'; i++) {
+        dst[i] = src[i];
+    }
+    dst[i] = '\0';
+}
+
+/* Append src to dst, writing at most dst_size-strlen(dst)-1 bytes, always NUL-terminates. */
+static void safe_strncat(char *dst, const char *src, size_t dst_size)
+{
+    if (_VOID(dst) || _VOID(src) || dst_size == 0) { return; }
+    size_t dst_len = 0;
+    while (dst_len < dst_size && dst[dst_len] != '\0') { dst_len++; }
+    if (dst_len >= dst_size - 1) { return; }
+    size_t remaining = dst_size - dst_len - 1;
+    size_t i;
+    for (i = 0; i < remaining && src[i] != '\0'; i++) {
+        dst[dst_len + i] = src[i];
+    }
+    dst[dst_len + i] = '\0';
+}
+
 internal struct grrr_string *_grrrs_new_from_cstring(const char* s)
 {
     const uint32_t len = __strlen(s);
