@@ -541,10 +541,10 @@ static void print_application_config(const struct configuration *config)
             printf("\tpassword = %s\n", cur->password);
         }
         if (strlen(cur->token) > 0) {
-            printf("\ttoken = %s\n", cur->token);
+            printf("\ttoken = [REDACTED]\n");
         }
         if (strlen(cur->session_key)) {
-            printf("\tsession_key = %s\n", cur->session_key);
+            printf("\tsession_key = [REDACTED]\n");
         }
     }
 }

@@ -89,10 +89,10 @@ static void get_session(struct api_credentials *creds)
 {
     if (NULL == creds) { return; }
     if (strlen(creds->api_key) == 0) {
-        _error("invalid_api_key %s %s %s: %s", LASTFM_API_KEY, LIBREFM_API_KEY, LISTENBRAINZ_API_KEY, creds->api_key);
+        _error("api::get_session[%s]: missing API key", get_api_type_label(creds->end_point));
     }
     if (strlen(creds->secret)  == 0) {
-        _error("invalid_api_secret %s %s %s: %s", LASTFM_API_SECRET, LIBREFM_API_SECRET, LISTENBRAINZ_API_SECRET, creds->secret);
+        _error("api::get_session[%s]: missing API secret", get_api_type_label(creds->end_point));
         return;
     }
     if (strlen(creds->token) == 0) { return; }
