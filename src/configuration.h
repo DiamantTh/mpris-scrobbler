@@ -5,6 +5,7 @@
 #ifndef MPRIS_SCROBBLER_CONFIGURATION_H
 #define MPRIS_SCROBBLER_CONFIGURATION_H
 
+#include <fcntl.h>
 #include <string.h>
 #include <sys/stat.h>
 #include "ini.h"
@@ -642,9 +643,15 @@ static int write_credentials_file(struct configuration *config) {
 #endif
 
     _debug("saving::credentials[%u]: %s", count, config->credentials_path);
-    FILE *file = fopen(config->credentials_path, "w+");
+    const int fd = open(config->credentials_path, O_WRONLY | O_CREAT | O_TRUNC, (mode_t)0600);
+    if (fd < 0) {
+        _warn("saving::credentials:failed: %s", config->credentials_path);
+        goto _return;
+    }
+    FILE *file = fdopen(fd, "w");
     if (NULL == file) {
         _warn("saving::credentials:failed: %s", config->credentials_path);
+        close(fd);
         goto _return;
     }
     status = write_ini_file(to_write, file);
